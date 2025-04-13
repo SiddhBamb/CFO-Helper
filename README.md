@@ -1,5 +1,7 @@
 # CFO Helper - Financial Dashboard & Business Simulation
 
+** NOTE: THE `FINAL2` BRANCH CONTAINS THE MOST UP-TO-DATE CODE **
+
 A comprehensive financial dashboard and business simulation tool for startup founders. The application consists of three main components:
 
 1. **Financial Dashboard**: Real-time visualization of key financial metrics
