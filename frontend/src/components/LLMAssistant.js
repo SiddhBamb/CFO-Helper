@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -17,6 +17,26 @@ const LLMAssistant = () => {
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const historyRef = useRef(null);
+
+  useEffect(() => {
+    const scrollToBottom = () => {
+      try {
+        if (historyRef.current) {
+          const scrollHeight = historyRef.current.scrollHeight;
+          const clientHeight = historyRef.current.clientHeight;
+          if (scrollHeight > clientHeight) {
+            historyRef.current.scrollTop = scrollHeight - clientHeight;
+          }
+        }
+      } catch (error) {
+        console.error('Error scrolling to bottom:', error);
+      }
+    };
+
+    // Use requestAnimationFrame to ensure the DOM is updated
+    requestAnimationFrame(scrollToBottom);
+  }, [history]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,25 +113,47 @@ const LLMAssistant = () => {
           <Typography variant="h6" gutterBottom>
             Previous Questions
           </Typography>
-          <List>
-            {history.map((item, index) => (
-              <ListItem key={index} divider>
-                <ListItemText
-                  primary={item.question}
-                  secondary={
-                    <>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.timestamp}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {item.answer}
-                      </Typography>
-                    </>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
+          <Box
+            ref={historyRef}
+            sx={{
+              maxHeight: '400px',
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#888',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: '#555',
+                },
+              },
+            }}
+          >
+            <List>
+              {history.map((item, index) => (
+                <ListItem key={index} divider>
+                  <ListItemText
+                    primary={item.question}
+                    secondary={
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.timestamp}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          {item.answer}
+                        </Typography>
+                      </>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         </Paper>
       )}
     </Box>
