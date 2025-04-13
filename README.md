@@ -1,4 +1,4 @@
-# CFO Helper - Financial Dashboard & Business Simulation
+# AIVA (AI Virtual Accountant) - Financial Dashboard & Business Simulation
 
 **NOTE: THE `FINAL2` BRANCH CONTAINS THE MOST UP-TO-DATE CODE**
 
