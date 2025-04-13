@@ -129,7 +129,7 @@ const Dashboard = () => {
           <div className="metric-item">
             <h3>Expenses</h3>
             <p className="metric-value">$850K</p>
-            <p className="metric-change negative">+8%</p>
+            <p className="metric-change positive">+8%</p>
           </div>
           <div className="metric-item">
             <h3>Profit</h3>
