@@ -24,7 +24,7 @@ const LLMAssistant = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/ask', {
+      const response = await axios.post('http://localhost:5001/api/ask', {
         question,
       });
 

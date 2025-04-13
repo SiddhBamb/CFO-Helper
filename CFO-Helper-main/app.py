@@ -20,7 +20,7 @@ db = SQLAlchemy(app)
 
 # Ollama configuration
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
-MODEL_NAME = 'llama2'  # or any other model you have installed
+MODEL_NAME = 'llama3.2'  # Updated to use the installed model
 
 # Models
 class FinancialMetrics(db.Model):
