@@ -183,7 +183,7 @@ const Dashboard = () => {
       
       // Travel & Entertainment
       'Travel Expenses': <FlightIcon style={iconStyle} />,
-      'Meals & Entertainment': <RestaurantIcon style={iconStyle} />,
+      'Doordash (Big Back)': <RestaurantIcon style={iconStyle} />,
       
       // Equipment & Software
       'Equipment Purchase': <DevicesIcon style={iconStyle} />,

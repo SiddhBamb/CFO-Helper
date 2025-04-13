@@ -11,26 +11,97 @@ import {
   Tooltip,
 } from '@mui/material';
 import axios from 'axios';
+import PixelBusinessman from './PixelBusinessman';
 
 const Simulation = () => {
   const [currentState, setCurrentState] = useState({
-    cash: 850000,
-    revenue: 75000,
-    expenses: 45000,
-    customers: 377,
-    churnRate: 2.5,
-    customerSatisfaction: 85,
-    productQuality: 80,
-    marketingEfficiency: 70,
-    teamSize: 15,
+    cash: 0,
+    revenue: 0,
+    expenses: 0,
+    customers: 0,
+    churnRate: 0,
+    customerSatisfaction: 0,
+    productQuality: 0,
+    marketingEfficiency: 0,
+    teamSize: 0,
     month: 1,
-    marketShare: 8,
-    competitorPressure: 50,
+    marketShare: 0,
+    competitorPressure: 0,
   });
 
   const [currentEvent, setCurrentEvent] = useState(null);
   const [gameOver, setGameOver] = useState(false);
   const [history, setHistory] = useState([]);
+  const [cashTrend, setCashTrend] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial metrics from database
+  useEffect(() => {
+    const fetchInitialMetrics = async () => {
+      try {
+        const response = await axios.get('http://localhost:5001/api/metrics');
+        const metrics = response.data;
+        
+        // Map database metrics to game state
+        const initialState = {
+          cash: metrics.find(m => m.metric_name === 'Cash on Hand')?.value || 0,
+          revenue: metrics.find(m => m.metric_name === 'MRR')?.value || 0,
+          expenses: metrics.find(m => m.metric_name === 'Operating Expenses')?.value || 0,
+          customers: metrics.find(m => m.metric_name === 'Paying Customers')?.value || 0,
+          churnRate: metrics.find(m => m.metric_name === 'Churn Rate')?.value || 0,
+          customerSatisfaction: 85, // Default value as it's not in metrics
+          productQuality: 80, // Default value as it's not in metrics
+          marketingEfficiency: 70, // Default value as it's not in metrics
+          teamSize: 15, // Default value as it's not in metrics
+          month: 1,
+          marketShare: 8, // Default value as it's not in metrics
+          competitorPressure: 50, // Default value as it's not in metrics
+        };
+
+        setCurrentState(initialState);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching initial metrics:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchInitialMetrics();
+  }, []);
+
+  // Initialize first event when component mounts and metrics are loaded
+  useEffect(() => {
+    if (!currentEvent && !loading) {
+      setCurrentEvent(events[0]);
+    }
+  }, [loading]);
+
+  // Calculate cash trend
+  useEffect(() => {
+    if (history.length > 0) {
+      const lastEntry = history[history.length - 1];
+      const currentProfit = lastEntry.result.revenue - lastEntry.result.expenses;
+      const previousProfit = history.length > 1 
+        ? history[history.length - 2].result.revenue - history[history.length - 2].result.expenses
+        : currentState.revenue - currentState.expenses;
+      
+      // Calculate percentage change in profit
+      // If previous profit is negative, we'll use absolute value to maintain correct sign
+      const trend = previousProfit !== 0 
+        ? ((currentProfit - previousProfit) / Math.abs(previousProfit)) * 100
+        : currentProfit > 0 ? 100 : -100; // Handle division by zero
+      
+      console.log('Current Profit:', currentProfit);
+      console.log('Previous Profit:', previousProfit);
+      console.log('Trend:', trend);
+      
+      setCashTrend(Math.round(trend));
+    } else {
+      // For the first turn, if we're profitable, show as happy
+      const initialProfit = currentState.revenue - currentState.expenses;
+      setCashTrend(initialProfit > 0 ? 10 : 0);
+    }
+  }, [history, currentState]);
 
   const events = [
     {
@@ -38,40 +109,32 @@ const Simulation = () => {
       title: 'Market Competition Intensifies',
       description: 'A major competitor has launched a similar product at a lower price point. Your sales team reports increasing pressure from customers requesting price matching.',
       options: [
-        {
-          text: 'Lower prices by 20% to stay competitive',
-          effect: {
-            revenue: -0.2,
-            customers: 0.15,
-            cash: -10000,
-            marketShare: 2,
-            competitorPressure: -20,
-            description: 'Price reduction impacts revenue but helps retain market share'
-          }
+        { 
+          text: "Match competitor's prices", 
+          effect: { 
+            revenue: -15, 
+            marketShare: 5,
+            customerSatisfaction: 10
+          },
+          description: "Reduced prices to match competition, maintaining market share but impacting revenue."
         },
-        {
-          text: 'Invest in product innovation ($50,000) to differentiate',
-          effect: {
-            cash: -50000,
-            expenses: 0.1,
-            productQuality: 15,
-            revenue: 0.25,
-            marketShare: 3,
-            competitorPressure: -30,
-            description: 'Product improvements lead to higher customer satisfaction and revenue'
-          }
+        { 
+          text: "Focus on premium features", 
+          effect: { 
+            revenue: 10, 
+            marketShare: -5,
+            productQuality: 15
+          },
+          description: "Invested in premium features to differentiate from competition."
         },
-        {
-          text: 'Launch aggressive marketing campaign ($30,000)',
-          effect: {
-            cash: -30000,
-            marketingEfficiency: 20,
-            customers: 0.2,
-            expenses: 0.15,
-            marketShare: 1.5,
-            competitorPressure: -10,
-            description: 'Marketing boost attracts new customers but increases expenses'
-          }
+        { 
+          text: "Launch a new product line", 
+          effect: { 
+            revenue: -20, 
+            marketShare: 15,
+            expenses: 50000
+          },
+          description: "Launched new product line to capture different market segment."
         }
       ]
     },
@@ -186,171 +249,543 @@ const Simulation = () => {
           }
         }
       ]
+    },
+    {
+      id: 5,
+      title: 'Customer Service Crisis',
+      description: 'Customer complaints are increasing, and support tickets are piling up. Your team is struggling to keep up.',
+      options: [
+        {
+          text: 'Hire dedicated support team ($35,000/month)',
+          effect: {
+            expenses: 0.2,
+            customerSatisfaction: 20,
+            churnRate: -2,
+            teamSize: 3,
+            description: 'Improved customer service reduces churn'
+          }
+        },
+        {
+          text: 'Implement AI chatbot ($15,000 one-time)',
+          effect: {
+            cash: -15000,
+            customerSatisfaction: 5,
+            churnRate: -0.5,
+            expenses: 0.05,
+            description: 'Automated support helps with basic queries'
+          }
+        },
+        {
+          text: 'Outsource support ($25,000/month)',
+          effect: {
+            expenses: 0.15,
+            customerSatisfaction: -5,
+            churnRate: 1,
+            description: 'Cost-effective but lower quality support'
+          }
+        }
+      ]
+    },
+    {
+      id: 6,
+      title: 'Product Innovation Challenge',
+      description: 'Your product is becoming outdated. Competitors are introducing new features that customers want.',
+      options: [
+        {
+          text: 'Major feature update ($75,000)',
+          effect: {
+            cash: -75000,
+            productQuality: 20,
+            revenue: 0.25,
+            customerSatisfaction: 15,
+            description: 'Significant product improvements drive growth'
+          }
+        },
+        {
+          text: 'Incremental updates ($25,000)',
+          effect: {
+            cash: -25000,
+            productQuality: 10,
+            revenue: 0.1,
+            customerSatisfaction: 5,
+            description: 'Small improvements maintain competitiveness'
+          }
+        },
+        {
+          text: 'Focus on marketing existing features',
+          effect: {
+            revenue: -0.1,
+            marketShare: -3,
+            description: 'Product falls behind in features'
+          }
+        }
+      ]
+    },
+    {
+      id: 7,
+      title: 'Economic Downturn',
+      description: 'The economy is slowing down. Customers are becoming more price-sensitive and spending less.',
+      options: [
+        {
+          text: 'Cut prices to maintain sales',
+          effect: {
+            revenue: -0.2,
+            customers: 0.1,
+            marketShare: 3,
+            description: 'Lower prices help maintain customer base'
+          }
+        },
+        {
+          text: 'Focus on enterprise clients',
+          effect: {
+            revenue: 0.1,
+            customers: -0.2,
+            expenses: 0.15,
+            description: 'Higher-value customers provide stability'
+          }
+        },
+        {
+          text: 'Reduce costs aggressively',
+          effect: {
+            expenses: -0.25,
+            customerSatisfaction: -15,
+            productQuality: -10,
+            description: 'Cost cuts impact quality and satisfaction'
+          }
+        }
+      ]
+    },
+    {
+      id: 8,
+      title: 'Data Security Incident',
+      description: 'A potential security vulnerability has been discovered in your system. No data breach has occurred yet.',
+      options: [
+        {
+          text: 'Full security audit ($50,000)',
+          effect: {
+            cash: -50000,
+            customerSatisfaction: 10,
+            churnRate: -1,
+            description: 'Proactive security measures build trust'
+          }
+        },
+        {
+          text: 'Patch critical issues ($15,000)',
+          effect: {
+            cash: -15000,
+            customerSatisfaction: 0,
+            description: 'Basic security fixes implemented'
+          }
+        },
+        {
+          text: 'Ignore for now',
+          effect: {
+            customerSatisfaction: -20,
+            churnRate: 2,
+            description: 'Security risks remain unaddressed'
+          }
+        }
+      ]
+    },
+    {
+      id: 9,
+      title: 'Marketing Campaign Decision',
+      description: 'Your marketing team has proposed several strategies to increase brand awareness and customer acquisition.',
+      options: [
+        {
+          text: 'Major brand campaign ($100,000)',
+          effect: {
+            cash: -100000,
+            customers: 0.4,
+            marketShare: 3,
+            revenue: 0.2,
+            description: 'Large-scale marketing drives growth'
+          }
+        },
+        {
+          text: 'Targeted digital ads ($30,000)',
+          effect: {
+            cash: -30000,
+            customers: 0.15,
+            marketShare: 1,
+            revenue: 0.1,
+            description: 'Focused marketing yields good ROI'
+          }
+        },
+        {
+          text: 'Organic growth focus',
+          effect: {
+            customers: -0.1,
+            marketShare: -2,
+            description: 'Growth slows without marketing'
+          }
+        }
+      ]
+    },
+    {
+      id: 10,
+      title: 'Supply Chain Disruption',
+      description: 'Your main supplier has increased prices and is experiencing delays. This could impact your product delivery.',
+      options: [
+        {
+          text: 'Find alternative suppliers ($20,000)',
+          effect: {
+            cash: -20000,
+            expenses: -0.1,
+            productQuality: 5,
+            description: 'Diversified supply chain reduces risk'
+          }
+        },
+        {
+          text: 'Negotiate with current supplier',
+          effect: {
+            expenses: 0.15,
+            customerSatisfaction: -5,
+            description: 'Higher costs but maintains relationships'
+          }
+        },
+        {
+          text: 'Pass costs to customers',
+          effect: {
+            revenue: 0.1,
+            customerSatisfaction: -10,
+            churnRate: 1,
+            description: 'Price increase impacts customer satisfaction'
+          }
+        }
+      ]
     }
   ];
 
-  const calculateImpact = (currentState, effect) => {
+  const handleOptionSelect = (optionIndex) => {
+    const selectedOption = currentEvent.options[optionIndex];
     const newState = { ...currentState };
     
-    // Apply direct numerical changes
-    Object.keys(effect).forEach(key => {
-      if (key !== 'description') {
-        if (typeof effect[key] === 'number') {
-          if (key.includes('Rate') || key.includes('Share') || key.includes('Efficiency') || 
-              key.includes('Quality') || key.includes('Satisfaction')) {
-            // For percentage-based metrics, add/subtract directly
-            newState[key] = Math.max(0, Math.min(100, newState[key] + effect[key]));
-          } else if (typeof effect[key] === 'number' && effect[key] > -1 && effect[key] < 1) {
-            // For percentage changes (decimals between -1 and 1)
-            newState[key] *= (1 + effect[key]);
-          } else {
-            // For absolute changes
-            newState[key] += effect[key];
-          }
+    // First, calculate the monthly revenue and expense changes
+    let revenueChange = 0;
+    let expenseChange = 0;
+    let cashImpact = 0;
+
+    // Apply effects
+    Object.entries(selectedOption.effect).forEach(([key, value]) => {
+      if (key === 'revenue') {
+        // Revenue change is a percentage of current revenue
+        revenueChange = Math.round(newState.revenue * (value/100));
+        newState.revenue += revenueChange;
+      } else if (key === 'expenses') {
+        // Expense change could be absolute or percentage
+        if (typeof value === 'number' && value > 1000) {
+          // If value is large, treat as absolute change
+          expenseChange = value;
+          newState.expenses += value;
+        } else {
+          // Otherwise treat as percentage
+          expenseChange = Math.round(newState.expenses * (value/100));
+          newState.expenses += expenseChange;
         }
+      } else if (key === 'cash') {
+        // Direct cash impact (one-time cost or gain)
+        cashImpact = value;
+      } else if (key !== 'description') {
+        // Other metrics (customers, satisfaction, etc.)
+        newState[key] = Math.round(Math.min(100, Math.max(0, newState[key] + value)));
       }
     });
 
-    // Calculate derived impacts
-    newState.revenue *= (1 + (newState.customerSatisfaction - currentState.customerSatisfaction) * 0.002);
-    newState.churnRate *= (1 - (newState.productQuality - currentState.productQuality) * 0.01);
-    newState.customers *= (1 - newState.churnRate / 100);
-
-    // Monthly cash flow calculation
-    newState.cash += (newState.revenue - newState.expenses);
+    // Update cash based on:
+    // 1. Previous cash
+    // 2. Monthly revenue - expenses
+    // 3. One-time cash impacts
+    newState.cash = newState.cash + cashImpact + (newState.revenue - newState.expenses);
     
-    // Round numerical values
-    Object.keys(newState).forEach(key => {
-      if (typeof newState[key] === 'number') {
-        newState[key] = Math.round(newState[key] * 100) / 100;
-      }
-    });
-
-    return newState;
-  };
-
-  const handleOptionSelect = (effect) => {
-    const newState = calculateImpact(currentState, effect);
+    // Increment month
     newState.month += 1;
 
     // Add to history
     setHistory([...history, {
       month: currentState.month,
       event: currentEvent,
-      decision: effect,
-      result: newState,
+      decision: selectedOption.effect,
+      result: { ...newState }
     }]);
-
-    setCurrentState(newState);
 
     // Check game over conditions
     if (newState.cash <= 0 || newState.customers <= 0) {
       setGameOver(true);
+      // Store the final state for accurate game over message
+      setCurrentState(newState);
     } else {
-      // Get new random event
-      const randomEvent = events[Math.floor(Math.random() * events.length)];
-      setCurrentEvent(randomEvent);
+      setCurrentState(newState);
+      // Pick a random next event, but not the same one
+      let nextEvent;
+      do {
+        nextEvent = events[Math.floor(Math.random() * events.length)];
+      } while (nextEvent.id === currentEvent.id && events.length > 1);
+      setCurrentEvent(nextEvent);
     }
   };
 
-  useEffect(() => {
-    // Start the game with a random event
-    const randomEvent = events[Math.floor(Math.random() * events.length)];
-    setCurrentEvent(randomEvent);
-  }, []);
+  const restartGame = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('http://localhost:5001/api/metrics');
+      const metrics = response.data;
+      
+      // Map database metrics to game state
+      const initialState = {
+        cash: metrics.find(m => m.metric_name === 'Cash on Hand')?.value || 0,
+        revenue: metrics.find(m => m.metric_name === 'MRR')?.value || 0,
+        expenses: metrics.find(m => m.metric_name === 'Operating Expenses')?.value || 0,
+        customers: metrics.find(m => m.metric_name === 'Paying Customers')?.value || 0,
+        churnRate: metrics.find(m => m.metric_name === 'Churn Rate')?.value || 0,
+        customerSatisfaction: 85, // Default value as it's not in metrics
+        productQuality: 80, // Default value as it's not in metrics
+        marketingEfficiency: 70, // Default value as it's not in metrics
+        teamSize: 15, // Default value as it's not in metrics
+        month: 1,
+        marketShare: 8, // Default value as it's not in metrics
+        competitorPressure: 50, // Default value as it's not in metrics
+      };
 
-  const restartGame = () => {
-    setCurrentState({
-      cash: 850000,
-      revenue: 75000,
-      expenses: 45000,
-      customers: 377,
-      churnRate: 2.5,
-      customerSatisfaction: 85,
-      productQuality: 80,
-      marketingEfficiency: 70,
-      teamSize: 15,
-      month: 1,
-      marketShare: 8,
-      competitorPressure: 50,
-    });
-    setGameOver(false);
-    setHistory([]);
-    const randomEvent = events[Math.floor(Math.random() * events.length)];
-    setCurrentEvent(randomEvent);
+      setCurrentState(initialState);
+      setCurrentEvent(events[0]);
+      setGameOver(false);
+      setHistory([]);
+      setCashTrend(0);
+    } catch (error) {
+      console.error('Error fetching initial metrics:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Business Simulation
+    <Box sx={{ 
+      p: 3, 
+      backgroundColor: '#f5f5f5',
+      borderRadius: 2,
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      maxWidth: '800px',
+      mx: 'auto',
+      fontFamily: '"Press Start 2P", cursive',
+      position: 'relative',
+      overflow: 'hidden',
+      backgroundImage: `
+        linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
+        linear-gradient(-45deg, #f5f5f5 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+        linear-gradient(-45deg, transparent 75%, #f5f5f5 75%)
+      `,
+      backgroundSize: '20px 20px',
+      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '4px',
+        background: 'linear-gradient(90deg, #2ecc71, #3498db, #e74c3c)',
+      }
+    }}>
+      <Typography variant="h4" gutterBottom sx={{ 
+        fontFamily: "'Press Start 2P', cursive",
+        textAlign: 'center',
+        mb: 4,
+        color: '#2c3e50',
+        fontSize: '1.5rem',
+        textShadow: '2px 2px 0px rgba(0,0,0,0.1)'
+      }}>
+        Business Trail
       </Typography>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Company Status - Month {currentState.month}
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={5}>
+          <Card sx={{ 
+            background: 'rgba(255, 255, 255, 0.95)',
+            border: '4px solid #2c3e50',
+            borderRadius: '0',
+            boxShadow: '4px 4px 0px rgba(0,0,0,0.2)',
+            minWidth: '300px',
+            height: '100%'
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ mb: 5 }}>
+                <PixelBusinessman 
+                  cashTrend={cashTrend} 
+                  emotion={
+                    gameOver 
+                      ? 'dead'
+                      : cashTrend <= -20 
+                      ? 'panicked'
+                      : cashTrend < 0 
+                      ? 'worried'
+                      : cashTrend >= 5
+                      ? 'happy'
+                      : 'neutral'
+                  }
+                />
+              </Box>
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: '1.1rem',
+                textAlign: 'center',
+                color: '#2c3e50',
+                mb: 3,
+                mt: 2
+              }}>
+                Month {currentState.month}
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography><strong>Cash:</strong> ${currentState.cash.toLocaleString()}</Typography>
-                  <Typography><strong>Revenue:</strong> ${currentState.revenue.toLocaleString()}/mo</Typography>
-                  <Typography><strong>Expenses:</strong> ${currentState.expenses.toLocaleString()}/mo</Typography>
-                  <Typography><strong>Customers:</strong> {currentState.customers.toLocaleString()}</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Churn Rate:</strong> {currentState.churnRate}%</Typography>
-                  <Typography><strong>Team Size:</strong> {currentState.teamSize}</Typography>
-                  <Typography><strong>Market Share:</strong> {currentState.marketShare}%</Typography>
-                  <Typography><strong>Product Quality:</strong> {currentState.productQuality}/100</Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Cash:</strong> ${currentState.cash.toLocaleString()}
+                  </Typography>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Revenue:</strong> ${currentState.revenue.toLocaleString()}/mo
+                  </Typography>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Expenses:</strong> ${currentState.expenses.toLocaleString()}/mo
+                  </Typography>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Customers:</strong> {currentState.customers.toLocaleString()}
+                  </Typography>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Market Share:</strong> {currentState.marketShare}%
+                  </Typography>
+                  <Typography sx={{ 
+                    fontFamily: "'Press Start 2P', cursive", 
+                    fontSize: '0.9rem',
+                    color: '#2c3e50',
+                    mb: 2
+                  }}>
+                    <strong>Team Size:</strong> {currentState.teamSize}
+                  </Typography>
                 </Grid>
               </Grid>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={7}>
           {!gameOver && currentEvent && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
+            <Card sx={{ 
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '4px solid #2c3e50',
+              borderRadius: '0',
+              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)',
+              minWidth: '400px',
+              height: '100%'
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: '1rem',
+                  color: '#2c3e50',
+                  mb: 3
+                }}>
                   {currentEvent.title}
                 </Typography>
-                <Typography paragraph>{currentEvent.description}</Typography>
-                {currentEvent.options.map((option, index) => (
-                  <Tooltip 
-                    key={index}
-                    title={option.effect.description}
-                    placement="right"
-                  >
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      sx={{ mb: 1 }}
-                      onClick={() => handleOptionSelect(option.effect)}
-                    >
-                      {option.text}
-                    </Button>
-                  </Tooltip>
-                ))}
+                <Typography paragraph sx={{ 
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: '0.8rem',
+                  mb: 4,
+                  color: '#2c3e50',
+                  lineHeight: '1.8'
+                }}>
+                  {currentEvent.description}
+                </Typography>
+                <Grid container spacing={3}>
+                  {currentEvent.options.map((option, index) => (
+                    <Grid item xs={12} key={index}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => handleOptionSelect(index)}
+                        sx={{
+                          fontFamily: "'Press Start 2P', cursive",
+                          fontSize: '0.8rem',
+                          py: 2,
+                          px: 3,
+                          background: '#2c3e50',
+                          color: '#fff',
+                          border: '2px solid #000',
+                          borderRadius: '0',
+                          whiteSpace: 'normal',
+                          height: 'auto',
+                          lineHeight: '1.5',
+                          '&:hover': {
+                            background: '#34495e'
+                          }
+                        }}
+                      >
+                        {option.text}
+                      </Button>
+                    </Grid>
+                  ))}
+                </Grid>
               </CardContent>
             </Card>
           )}
 
           {gameOver && (
-            <Card>
+            <Card sx={{ 
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '4px solid #e74c3c',
+              borderRadius: '0',
+              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+            }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: '0.9rem',
+                  color: '#e74c3c'
+                }}>
                   Game Over
                 </Typography>
-                <Typography paragraph>
+                <Typography paragraph sx={{ 
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: '0.7rem',
+                  color: '#2c3e50',
+                  lineHeight: '1.6'
+                }}>
                   {currentState.cash <= 0 
                     ? "Your company ran out of cash!" 
-                    : "Your customer base has completely churned!"}
+                    : currentState.customers <= 0
+                    ? "Your customer base has completely churned!"
+                    : "Your company has gone bankrupt!"}
                 </Typography>
-                <Typography paragraph>
+                <Typography paragraph sx={{ 
+                  fontFamily: "'Press Start 2P', cursive",
+                  fontSize: '0.7rem',
+                  color: '#2c3e50',
+                  lineHeight: '1.6'
+                }}>
                   Final Stats:
                   <br />
                   Months Survived: {currentState.month}
@@ -361,7 +796,21 @@ const Simulation = () => {
                   <br />
                   Market Share: {currentState.marketShare}%
                 </Typography>
-                <Button variant="contained" onClick={restartGame}>
+                <Button 
+                  variant="contained" 
+                  onClick={restartGame}
+                  sx={{
+                    fontFamily: "'Press Start 2P', cursive",
+                    fontSize: '0.7rem',
+                    background: '#2c3e50',
+                    color: '#fff',
+                    border: '2px solid #000',
+                    borderRadius: '0',
+                    '&:hover': {
+                      background: '#34495e'
+                    }
+                  }}
+                >
                   Start New Game
                 </Button>
               </CardContent>
@@ -371,24 +820,61 @@ const Simulation = () => {
       </Grid>
 
       {history.length > 0 && (
-        <Paper sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper sx={{ 
+          p: 3, 
+          mt: 4,
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: '4px solid #2c3e50',
+          borderRadius: '0',
+          boxShadow: '4px 4px 0px rgba(0,0,0,0.2)',
+          width: '100%'
+        }}>
+          <Typography variant="h6" gutterBottom sx={{ 
+            fontFamily: "'Press Start 2P', cursive",
+            fontSize: '0.9rem',
+            color: '#2c3e50'
+          }}>
             Decision History
           </Typography>
-          {history.map((entry, index) => (
-            <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-              <Typography variant="subtitle1">
+          {[...history].reverse().map((entry, index) => (
+            <Box key={index} sx={{ 
+              mb: 2, 
+              p: 2, 
+              border: '2px solid #2c3e50',
+              borderRadius: '0',
+              background: index % 2 === 0 ? 'rgba(44, 62, 80, 0.05)' : 'transparent'
+            }}>
+              <Typography variant="subtitle1" sx={{ 
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: '0.7rem',
+                color: '#2c3e50'
+              }}>
                 Month {entry.month}: {entry.event.title}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ 
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: '0.7rem',
+                color: '#2c3e50',
+                lineHeight: '1.6'
+              }}>
                 Decision: {entry.event.options.find(opt => 
                   JSON.stringify(opt.effect) === JSON.stringify(entry.decision)
                 )?.text}
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ 
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: '0.7rem',
+                color: '#2c3e50',
+                lineHeight: '1.6'
+              }}>
                 Impact: {entry.decision.description}
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ 
+                fontFamily: "'Press Start 2P', cursive",
+                fontSize: '0.7rem',
+                color: '#2c3e50',
+                lineHeight: '1.6'
+              }}>
                 Cash: ${entry.result.cash.toLocaleString()} | 
                 Revenue: ${entry.result.revenue.toLocaleString()}/mo | 
                 Customers: {entry.result.customers.toLocaleString()}

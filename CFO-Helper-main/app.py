@@ -117,7 +117,7 @@ def seed_database():
             'Internet Service',
             'Phone Service',
             'Travel Expenses',
-            'Meals & Entertainment',
+            'Doordash (Big Back)',
             'Equipment Purchase',
             'Software Licenses',
             'Professional Services',
@@ -130,15 +130,27 @@ def seed_database():
         ]
     }
 
-    # Generate some sample transactions
+    # First, add Doordash as the first expense transaction
+    today = datetime.utcnow()
+    db.session.add(Transaction(
+        type='expense',
+        amount=round(random.uniform(50, 200), 2),  # Round to exactly 2 decimal places
+        category='Doordash (Big Back)',
+        description='Team Lunch - Doordash Order',
+        date=today
+    ))
+
+    # Generate remaining transactions for the last 30 days
     for i in range(30):
         days_ago = 30 - i
-        date = datetime.utcnow() - timedelta(days=days_ago)
+        date = today - timedelta(days=days_ago)
         
         # Add 2-4 transactions per day
         for _ in range(random.randint(2, 4)):
             trans_type = random.choice(['income', 'expense'])
-            category = random.choice(transaction_categories[trans_type])
+            # Skip Doordash as it's already added as first transaction
+            category = random.choice([cat for cat in transaction_categories[trans_type] 
+                                   if cat != 'Doordash (Big Back)'])
             
             if trans_type == 'income':
                 amount = random.uniform(1000, 5000)
@@ -243,7 +255,7 @@ def ask_question():
 
     # Get current metrics and transactions for context
     metrics = FinancialMetrics.query.all()
-    transactions = Transaction.query.order_by(Transaction.date.desc()).limit(5).all()
+    transactions = Transaction.query.order_by(Transaction.date.desc()).all()
 
     # Format context
     context = "Current Financial Metrics:\n"
@@ -256,11 +268,7 @@ def ask_question():
 
     try:
         # Call Ollama API
-        response = requests.post(
-            OLLAMA_API_URL,
-            json={
-                "model": MODEL_NAME,
-                "prompt": f"""You are a financial advisor helping a startup founder understand their business metrics and make better decisions.
+        prompt = f"""You are a financial advisor helping a startup founder understand their business metrics and make better decisions.
 
 Context:
 {context}
@@ -271,7 +279,16 @@ Please provide a detailed, helpful response that:
 1. References specific metrics and trends
 2. Offers actionable insights
 3. Considers the business context
-4. Uses clear, professional language""",
+4. Uses clear, professional language
+5. Be concise and to the point
+6. Cite/use numbers and data from the database when relevant or possible.
+"""
+        print(prompt)
+        response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": MODEL_NAME,
+                "prompt": prompt,
                 "stream": False
             }
         )
