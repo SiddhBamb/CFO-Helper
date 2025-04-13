@@ -19,8 +19,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Ollama configuration
-OLLAMA_API_URL = 'http://localhost:11434/api/generate'
-MODEL_NAME = 'llama2'  # or any other model you have installed
+OLLAMA_API_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "phi"  # Using phi model for faster responses
 
 # Models
 class FinancialMetrics(db.Model):
@@ -82,38 +82,81 @@ def seed_database():
     for metric in metrics_data:
         db.session.add(FinancialMetrics(**metric))
 
-    # Sample transactions (last 30 days)
-    transaction_categories = {
-        'income': ['New Subscriptions', 'Renewal', 'Enterprise Deal', 'Service Fee'],
-        'expense': ['Salary', 'Marketing', 'Server Costs', 'Office Rent', 'Software Licenses']
+    # Detailed transaction categories
+    income_categories = {
+        'Subscription Revenue': ['Enterprise Plan', 'Pro Plan', 'Basic Plan', 'Annual Subscription'],
+        'Services': ['Consulting', 'Implementation', 'Training', 'Support'],
+        'Other Income': ['Interest Income', 'Refund', 'Miscellaneous']
     }
 
-    # Generate some sample transactions
-    for i in range(30):
-        days_ago = 30 - i
-        date = datetime.utcnow() - timedelta(days=days_ago)
-        
-        # Add 2-4 transactions per day
-        for _ in range(random.randint(2, 4)):
-            trans_type = random.choice(['income', 'expense'])
-            category = random.choice(transaction_categories[trans_type])
-            
-            if trans_type == 'income':
-                amount = random.uniform(1000, 5000)
-                if category == 'Enterprise Deal':
-                    amount *= 5
-            else:
-                amount = random.uniform(500, 3000)
-                if category == 'Salary':
-                    amount *= 3
+    expense_categories = {
+        'Salaries & Benefits': ['Engineering Salaries', 'Sales Salaries', 'Marketing Salaries', 'Health Insurance', '401k Match'],
+        'Office & Operations': ['Office Rent', 'Utilities', 'Internet', 'Office Supplies', 'Cleaning Services'],
+        'Technology': ['AWS Hosting', 'Software Licenses', 'Hardware', 'Cloud Services', 'Domain Names'],
+        'Marketing': ['Google Ads', 'LinkedIn Ads', 'Content Marketing', 'SEO Tools', 'Social Media Ads'],
+        'Travel & Entertainment': ['Flight Tickets', 'Hotel Stays', 'Meals & Entertainment', 'Uber/Lyft', 'Conference Tickets'],
+        'Professional Services': ['Legal Fees', 'Accounting', 'Consulting', 'Recruiting'],
+        'Food & Beverage': ['Team Lunch', 'Coffee & Snacks', 'Doordash', 'Catering'],
+        'Other': ['Bank Fees', 'Insurance', 'Miscellaneous']
+    }
 
-            db.session.add(Transaction(
-                type=trans_type,
-                amount=round(amount, 2),
-                category=category,
-                description=f"{category} - {date.strftime('%B %d')}",
-                date=date
-            ))
+    # Generate sample transactions for the last 30 days
+    base_date = datetime.utcnow()
+    transactions = []
+
+    # Add income transactions
+    for i in range(15):  # 15 income transactions
+        days_ago = random.randint(0, 30)
+        date = base_date - timedelta(days=days_ago)
+        
+        category = random.choice(list(income_categories.keys()))
+        subcategory = random.choice(income_categories[category])
+        
+        if 'Subscription' in subcategory:
+            amount = random.uniform(1000, 5000)
+        elif 'Services' in category:
+            amount = random.uniform(2000, 10000)
+        else:
+            amount = random.uniform(100, 1000)
+
+        transactions.append(Transaction(
+            type='income',
+            amount=round(amount, 2),
+            category=f"{category}: {subcategory}",
+            description=f"{subcategory} - {date.strftime('%B %d')}",
+            date=date
+        ))
+
+    # Add expense transactions
+    for i in range(25):  # 25 expense transactions
+        days_ago = random.randint(0, 30)
+        date = base_date - timedelta(days=days_ago)
+        
+        category = random.choice(list(expense_categories.keys()))
+        subcategory = random.choice(expense_categories[category])
+        
+        if 'Salaries' in category:
+            amount = random.uniform(5000, 15000)
+        elif 'Office' in category or 'Technology' in category:
+            amount = random.uniform(1000, 5000)
+        elif 'Travel' in category:
+            amount = random.uniform(200, 2000)
+        elif 'Food' in category:
+            amount = random.uniform(50, 500)
+        else:
+            amount = random.uniform(100, 1000)
+
+        transactions.append(Transaction(
+            type='expense',
+            amount=round(amount, 2),
+            category=f"{category}: {subcategory}",
+            description=f"{subcategory} - {date.strftime('%B %d')}",
+            date=date
+        ))
+
+    print(f"Adding {len(transactions)} transactions...")
+    for transaction in transactions:
+        db.session.add(transaction)
 
     try:
         db.session.commit()
@@ -122,6 +165,33 @@ def seed_database():
         print(f"Error seeding database: {str(e)}")
         db.session.rollback()
         raise
+
+def get_current_metrics():
+    """Get the current financial metrics from the database."""
+    metrics = FinancialMetrics.query.all()
+    return {
+        'mrr': next((m.value for m in metrics if m.metric_name == 'MRR'), 0),
+        'arr': next((m.value for m in metrics if m.metric_name == 'ARR'), 0),
+        'cac': next((m.value for m in metrics if m.metric_name == 'CAC'), 0),
+        'ltv': next((m.value for m in metrics if m.metric_name == 'LTV'), 0),
+        'ltv_to_cac_ratio': next((m.value for m in metrics if m.metric_name == 'LTV:CAC Ratio'), 0),
+        'churn_rate': next((m.value for m in metrics if m.metric_name == 'Churn Rate'), 0),
+        'revenue_growth_rate': next((m.value for m in metrics if m.metric_name == 'Revenue Growth'), 0),
+        'gross_margin': next((m.value for m in metrics if m.metric_name == 'Gross Margin'), 0),
+        'operating_expenses': next((m.value for m in metrics if m.metric_name == 'Operating Expenses'), 0),
+        'net_income': next((m.value for m in metrics if m.metric_name == 'Net Income'), 0),
+        'cash_burn_rate': next((m.value for m in metrics if m.metric_name == 'Net Burn'), 0),
+        'runway': next((m.value for m in metrics if m.metric_name == 'Runway'), 0)
+    }
+
+def get_recent_transactions():
+    """Get recent transactions from the database."""
+    transactions = Transaction.query.order_by(Transaction.date.desc()).limit(20).all()
+    return [{
+        'description': f"{t.type}: {t.category}",
+        'amount': t.amount,
+        'date': t.date.strftime('%Y-%m-%d')
+    } for t in transactions]
 
 # Routes
 @app.route('/api/metrics', methods=['GET'])
@@ -174,49 +244,74 @@ def add_transaction():
 
 @app.route('/api/ask', methods=['POST'])
 def ask_question():
-    data = request.json
-    question = data.get('question', '')
-
-    # Get current metrics and transactions for context
-    metrics = FinancialMetrics.query.all()
-    transactions = Transaction.query.order_by(Transaction.date.desc()).limit(5).all()
-
-    # Format context
-    context = "Current Financial Metrics:\n"
-    for metric in metrics:
-        context += f"{metric.metric_name}: {metric.value}\n"
-    
-    context += "\nRecent Transactions:\n"
-    for transaction in transactions:
-        context += f"{transaction.type}: {transaction.amount} ({transaction.category}) - {transaction.description}\n"
-
     try:
-        # Call Ollama API
+        data = request.get_json()
+        question = data.get('question')
+        
+        if not question:
+            return jsonify({'error': 'No question provided'}), 400
+            
+        # Get current metrics
+        metrics = get_current_metrics()
+        
+        # Get recent transactions
+        transactions = get_recent_transactions()
+        
+        # Format transactions for context
+        transactions_text = "\n".join([
+            f"- {t['description']}: ${t['amount']} ({t['date']})"
+            for t in transactions
+        ])
+        
+        # Create a detailed context with specific numbers
+        context = f"""Current Financial Metrics:
+- Monthly Recurring Revenue (MRR): ${metrics['mrr']:,.2f}
+- Annual Recurring Revenue (ARR): ${metrics['arr']:,.2f}
+- Customer Acquisition Cost (CAC): ${metrics['cac']:,.2f}
+- Customer Lifetime Value (LTV): ${metrics['ltv']:,.2f}
+- LTV to CAC Ratio: {metrics['ltv_to_cac_ratio']:.1f}
+- Churn Rate: {metrics['churn_rate']}%
+- Revenue Growth Rate: {metrics['revenue_growth_rate']}%
+- Gross Margin: {metrics['gross_margin']}%
+- Operating Expenses: ${metrics['operating_expenses']:,.2f}
+- Net Income: ${metrics['net_income']:,.2f}
+- Cash Burn Rate: ${metrics['cash_burn_rate']:,.2f}
+- Runway: {metrics['runway']} months
+
+Recent Transactions:
+{transactions_text}"""
+
+        # Make request to Ollama API with enhanced prompt
         response = requests.post(
             OLLAMA_API_URL,
             json={
-                "model": MODEL_NAME,
-                "prompt": f"""You are a financial advisor helping a startup founder understand their business metrics and make better decisions.
+                "model": OLLAMA_MODEL,
+                "prompt": f"""You are a friendly and conversational financial advisor helping a startup founder understand their business metrics and make better decisions. 
+Reference specific numbers from the metrics when answering questions if they are needed - this helps build trust and makes your advice more concrete.
 
-Context:
+Here's the current financial data:
 {context}
+
+When answering questions:
+1. Be conversational and friendly, like you're having a coffee chat
+2. Cite specific numbers from the metrics when necessary and relevant
+3. Explain what these numbers mean in simple terms
+4. Provide actionable insights based on the numbers
+5. If you're making a recommendation, back it up with specific metrics
+6. Sound like a real person, not a robot. Also be concise when possible.
 
 Question: {question}
 
-Please provide a detailed, helpful response that:
-1. References specific metrics and trends
-2. Offers actionable insights
-3. Considers the business context
-4. Uses clear, professional language""",
+Answer:""",
                 "stream": False
             }
         )
         
         if response.status_code == 200:
-            answer = response.json()['response']
-            return jsonify({'answer': answer})
+            return jsonify({'answer': response.json()['response']})
         else:
             return jsonify({'error': 'Failed to get response from Ollama'}), 500
+            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

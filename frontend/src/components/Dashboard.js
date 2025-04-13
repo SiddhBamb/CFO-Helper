@@ -10,6 +10,11 @@ import {
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState([]);
@@ -65,11 +70,11 @@ const Dashboard = () => {
         date: date.toLocaleDateString(),
         revenue: 0,
         expenses: 0,
-        netIncome: 0,
-        customers: 0
+        netIncome: 0
       };
     });
 
+    // Calculate daily totals from transactions
     transactions.forEach(transaction => {
       const date = new Date(transaction.date).toLocaleDateString();
       const dayData = last30Days.find(d => d.date === date);
@@ -100,7 +105,8 @@ const Dashboard = () => {
       
       {/* Revenue & Income Section */}
       <Typography variant="h5" sx={{ mt: 3, mb: 2 }}>
-        💰 Revenue & Income
+        <AttachMoneyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        Revenue & Income
       </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
@@ -132,6 +138,7 @@ const Dashboard = () => {
       {/* Revenue Chart */}
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
+          <ShowChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
           Revenue & Expenses (Last 30 Days)
         </Typography>
         <ResponsiveContainer width="100%" height={300}>
@@ -150,7 +157,8 @@ const Dashboard = () => {
 
       {/* Expenses & Burn Section */}
       <Typography variant="h5" sx={{ mt: 3, mb: 2 }}>
-        💸 Expenses & Burn
+        <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        Expenses & Burn
       </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
@@ -182,6 +190,7 @@ const Dashboard = () => {
       {/* Expenses Breakdown Chart */}
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
+          <ReceiptIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
           Expenses Breakdown
         </Typography>
         <ResponsiveContainer width="100%" height={300}>
@@ -203,7 +212,8 @@ const Dashboard = () => {
 
       {/* Cash & Runway Section */}
       <Typography variant="h5" sx={{ mt: 3, mb: 2 }}>
-        🏦 Cash & Runway
+        <AccountBalanceIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        Cash & Runway
       </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
@@ -234,13 +244,14 @@ const Dashboard = () => {
 
       {/* Recent Transactions */}
       <Typography variant="h5" sx={{ mt: 3, mb: 2 }}>
-        📊 Recent Transactions
+        <ReceiptIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        Recent Transactions
       </Typography>
       <Paper sx={{ p: 2 }}>
-        {transactions.slice(0, 5).map((transaction) => (
+        {transactions.slice(0, 20).map((transaction) => (
           <Box key={transaction.id} sx={{ mb: 2 }}>
             <Typography variant="body1">
-              {transaction.type === 'income' ? '💰' : '💸'} {transaction.description}
+              {transaction.type === 'income' ? <AttachMoneyIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> : <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />} {transaction.description}
             </Typography>
             <Typography variant="body2" color={transaction.type === 'income' ? 'success.main' : 'error.main'}>
               {transaction.type === 'income' ? '+' : '-'}${transaction.amount}

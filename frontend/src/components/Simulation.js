@@ -375,7 +375,7 @@ const Simulation = () => {
           <Typography variant="h6" gutterBottom>
             Decision History
           </Typography>
-          {history.map((entry, index) => (
+          {[...history].reverse().map((entry, index) => (
             <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
               <Typography variant="subtitle1">
                 Month {entry.month}: {entry.event.title}

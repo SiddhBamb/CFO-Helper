@@ -24,7 +24,7 @@ const LLMAssistant = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/ask', {
+      const response = await axios.post('http://localhost:5001/api/ask', {
         question,
       });
 
@@ -39,7 +39,7 @@ const LLMAssistant = () => {
       setQuestion('');
     } catch (error) {
       console.error('Error asking question:', error);
-      setAnswer('Sorry, there was an error processing your question.');
+      setAnswer('Sorry, there was an error processing your question. Please make sure the Ollama server is running on port 11434.');
     } finally {
       setLoading(false);
     }
